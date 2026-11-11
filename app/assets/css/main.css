@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #e9edf1;
+  --paper-light: #f0f2f4;
+  --ink: #19212b;
+  --muted: #707b88;
+  --hairline: rgba(39, 50, 63, .22);
+}
+
+html { background: var(--paper); }
+body { min-width: 320px; }
+a:focus-visible, button:focus-visible { outline: 1px solid var(--ink); outline-offset: 5px; }
+::selection { background: #273544; color: #f0f2f4; }
