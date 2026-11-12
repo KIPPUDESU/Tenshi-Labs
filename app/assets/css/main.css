@@ -8,7 +8,27 @@
   --hairline: rgba(39, 50, 63, .22);
 }
 
-html { background: var(--paper); }
-body { min-width: 320px; }
-a:focus-visible, button:focus-visible { outline: 1px solid var(--ink); outline-offset: 5px; }
-::selection { background: #273544; color: #f0f2f4; }
+@layer base {
+  *,
+  ::before,
+  ::after {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth bg-[var(--paper)];
+  }
+
+  body {
+    @apply min-w-[320px];
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    @apply outline outline-1 outline-[var(--ink)] outline-offset-[5px];
+  }
+
+  ::selection {
+    @apply bg-[#273544] text-[#f0f2f4];
+  }
+}

@@ -1,32 +1,32 @@
 <template>
   <section
     ref="stageEl"
-    class="stage"
+    class="stage relative grid min-h-screen place-items-center overflow-hidden bg-white cursor-pointer"
     :class="{ spawning: spawned, fading: fading }"
     :style="rootStyle"
     @click="$emit('replay')"
   >
-    <div class="run">
+    <div class="run grid place-items-center">
       <div
         v-for="copy in copies"
         :key="copy.id"
-        class="copy"
+        class="copy [grid-area:1/1] will-change-transform"
         :data-copy="copy.id"
         :style="copy.id === 'echo' ? echoStyle : undefined"
         :aria-hidden="copy.id === 'echo' ? 'true' : undefined"
       >
-        <div class="fade">
-          <div class="jank" :class="{ 'no-jank': !s.jank }">
+        <div class="fade opacity-100 will-change-[opacity]">
+          <div class="jank will-change-[opacity,transform]" :class="{ 'no-jank': !s.jank }">
             <div
-              class="enter"
+              class="enter will-change-transform"
               :class="{
                 'echo-enter': copy.id === 'echo',
                 'echo-reveal': copy.id === 'echo' && spawned,
               }"
             >
-              <div class="spin">
+              <div class="spin will-change-transform">
                 <svg
-                  class="band"
+                  class="band block origin-center"
                   :style="bandStyle"
                   :viewBox="`0 0 ${size} ${size}`"
                   role="img"
@@ -174,44 +174,14 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId));
 </script>
 
 <style scoped>
-.stage {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  overflow: hidden;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.run {
-  display: grid;
-  place-items: center;
-}
-
 /* 两个副本叠在同一格里 */
-.copy {
-  grid-area: 1 / 1;
-  will-change: transform;
-}
-
-.fade {
-  opacity: 1;
-  will-change: opacity;
-}
-
 /* 卡帧/闪烁层：默认不动，仅在重影生成的瞬间（.spawning）爆发一次 */
-.jank {
-  will-change: opacity, transform;
-}
-
 .spawning .jank:not(.no-jank) {
   animation: jank 0.5s steps(1, end) both;
 }
 
 /* 位移层：恒定速度从左侧屏幕外滑过中线，不停在中心 */
 .enter {
-  will-change: transform;
   animation: ring-enter var(--enter-dur, 1.6s) linear both;
 }
 
@@ -228,13 +198,7 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId));
 
 /* 旋转层：全程匀速顺时针，消失阶段也在转 */
 .spin {
-  will-change: transform;
   animation: ring-spin var(--enter-dur, 1.6s) linear both;
-}
-
-.band {
-  display: block;
-  transform-origin: 50% 50%;
 }
 
 /* 弧长生长 */

@@ -1,38 +1,52 @@
 <template>
-  <main class="home-page">
-    <section ref="heroPanel" class="hero-panel">
-      <div class="hero-panel__chrome">
-        <span>ACT / 01</span>
-        <span>THE FIGURE SYSTEM</span>
+  <main class="home-page overflow-hidden bg-[#e6e9ed]">
+    <section
+      ref="heroPanel"
+      class="hero-panel relative min-h-[max(820px,100svh)] overflow-hidden border-b border-[rgba(35,47,61,0.28)]"
+    >
+      <div
+        class="hero-panel__chrome absolute inset-x-[4.5vw] top-[117px] z-5 flex items-center justify-between font-mono text-[clamp(18px,2.2vw,30px)] tracking-[0.18em] text-[#667484] max-[760px]:left-5 max-[760px]:right-5 max-[760px]:top-[102px] max-[760px]:text-[7px] max-[760px]:tracking-[0.04em]"
+      >
+        <span class="text-[#1f2c3a]">ACT / 01</span>
+        <span class="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[inherit] tracking-[0.14em] text-[#1f2c3a] max-[760px]:hidden">THE FIGURE SYSTEM</span>
         <span>ARCHIVE STATUS: OPEN</span>
       </div>
 
-      <div class="hero-panel__coordinates" aria-hidden="true">
-        <span class="coordinate coordinate--north">N</span>
-        <span class="coordinate coordinate--east">E</span>
-        <span class="coordinate coordinate--south">S</span>
-        <span class="coordinate coordinate--west">W</span>
+      <div
+        class="hero-panel__coordinates absolute left-1/2 top-[47%] z-1 aspect-square w-[min(58vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(55,73,91,0.17)] max-[760px]:top-[55%] max-[760px]:w-[90vw]"
+        aria-hidden="true"
+      >
+        <span class="coordinate absolute -top-[19px] left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.16em] text-[#58697b]">N</span>
+        <span class="coordinate absolute top-1/2 -right-[23px] -translate-y-1/2 font-mono text-[9px] tracking-[0.16em] text-[#58697b]">E</span>
+        <span class="coordinate absolute -bottom-[19px] left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.16em] text-[#58697b]">S</span>
+        <span class="coordinate absolute top-1/2 -left-[23px] -translate-y-1/2 font-mono text-[9px] tracking-[0.16em] text-[#58697b]">W</span>
       </div>
 
-      <div class="hero-panel__rays" aria-hidden="true">
+      <div
+        class="hero-panel__rays absolute left-1/2 top-[47%] z-1 aspect-square w-[min(65vw,840px)] -translate-x-1/2 -translate-y-1/2 max-[760px]:top-[55%] max-[760px]:w-[105vw]"
+        aria-hidden="true"
+      >
         <span
           v-for="ray in 18"
           :key="ray"
-          :class="{ 'hero-panel__ray--signal': ray % 5 === 0 }"
+        class="absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-white/70 [transform:rotate(var(--ray))]"
           :style="{ '--ray': `${ray * 10}deg` }"
         />
       </div>
 
       <canvas
         ref="orbitCanvas"
-        class="hero-panel__orbit"
+        class="hero-panel__orbit absolute left-1/2 top-[47%] z-1 h-[min(72vw,930px)] w-[min(72vw,930px)] -translate-x-1/2 -translate-y-1/2 pointer-events-none will-change-transform max-[760px]:top-[55%] max-[760px]:h-[130vw] max-[760px]:w-[130vw]"
         aria-hidden="true"
       />
 
-      <div class="hero-panel__cross" aria-hidden="true">
-        <span class="hero-panel__cross-vertical" />
-        <span class="hero-panel__cross-horizontal" />
-        <span class="hero-panel__cross-ring" />
+      <div
+        class="hero-panel__cross absolute left-1/2 top-[47%] z-2 aspect-square w-[min(13vw,170px)] -translate-x-1/2 -translate-y-1/2 text-[rgba(31,46,63,0.58)] max-[760px]:top-[55%] max-[760px]:w-[115px]"
+        aria-hidden="true"
+      >
+        <span class="hero-panel__cross-vertical absolute bottom-0 left-1/2 top-0 w-px bg-current" />
+        <span class="hero-panel__cross-horizontal absolute left-0 right-0 top-1/2 h-px bg-current" />
+        <span class="hero-panel__cross-ring absolute inset-[22%] rounded-full border border-current" />
         <span ref="emitter" class="hero-panel__cross-emitter" />
         <span class="hero-panel__cross-label">✝ / A</span>
       </div>
@@ -56,10 +70,10 @@
           />
         </div>
 
-      <div class="hero-panel__copy">
-        <p class="eyebrow">
+      <div class="hero-panel__copy absolute left-[6%] top-[31%] z-4">
+        <p class="eyebrow mb-7 flex items-center gap-[13px] font-mono text-[9px] tracking-[0.18em] text-[#6e7b8b]">
           <span>THE ANNUNCIATION</span>
-          <b>—</b>
+          <b class="font-normal text-[#253749]">—</b>
           <span>ACT / 01</span>
         </p>
         <div class="hero-panel__title-rule" aria-hidden="true" />
@@ -118,15 +132,18 @@
             <i class="glyph-point" style="--x: 100%; --y: 28%; --index: 46;" aria-hidden="true" />
           </span>
         </h1>
-        <p class="hero-panel__intro">
+        <p class="hero-panel__intro mb-0 ml-[7px] mt-10 font-mono text-[11px] leading-[1.85] tracking-[0.04em] text-[#6c7988]">
           Be not afraid, Mary: for thou hast found favour with God.<br />
           — LUKE 1:30
         </p>
       </div>
 
-      <div class="artwork-field" aria-label="Reserved field for the angel line drawing">
+      <div
+        class="artwork-field absolute right-[7.5%] top-[16%] z-3 h-[68%] w-[min(38vw,500px)]"
+        aria-label="Reserved field for the angel line drawing"
+      >
         <!-- 放置图画 -->
-        <div class="artwork-field__frame">
+        <div class="artwork-field__frame relative h-full w-full border border-[rgba(43,62,81,0.42)] bg-[rgba(234,238,242,0.24)] shadow-[14px_16px_0_rgba(48,69,89,0.06)]">
           <span class="artwork-field__corner artwork-field__corner--tr" />
           <span class="artwork-field__corner artwork-field__corner--bl" />
           <span class="artwork-field__corner artwork-field__corner--br" />
@@ -140,45 +157,45 @@
         </div>
       </div>
 
-      <div class="hero-panel__legend hero-panel__legend--left">
-        <span class="legend-marker" />
+      <div class="hero-panel__legend hero-panel__legend--left absolute bottom-[20%] left-[10.5vw] z-4 flex items-center gap-2.5 font-mono text-[8px] tracking-[0.16em] text-[#718092]">
+        <span class="legend-marker h-2 w-2 rounded-full border border-[#2453cc]" />
         <span>FIELD / 00.01</span>
       </div>
-      <div class="hero-panel__legend hero-panel__legend--right">
+      <div class="hero-panel__legend hero-panel__legend--right absolute bottom-[20%] right-[7.5vw] z-4 flex items-center gap-2.5 font-mono text-[8px] tracking-[0.16em] text-[#718092]">
         <span>AXIS / 04</span>
-        <span class="legend-marker" />
+        <span class="legend-marker h-2 w-2 rounded-full border border-[#2453cc]" />
       </div>
-      <div class="hero-panel__verse">
+      <div class="hero-panel__verse absolute bottom-[29%] right-[7.5vw] z-4 flex flex-col gap-[7px] text-right font-mono text-[8px] leading-[1.5] tracking-[0.16em] text-[#536477]">
         <span>THEY REST NOT DAY AND NIGHT</span>
-        <b>REV 4:8</b>
+          <b class="font-normal text-[#2453cc]">REV 4:8</b>
       </div>
-      <div class="hero-panel__scroll">
+      <div class="hero-panel__scroll absolute bottom-[30px] left-1/2 z-4 flex -translate-x-1/2 flex-col items-center gap-3 font-mono text-[8px] tracking-[0.19em] text-[#718092]">
         <span>CONTINUE</span>
         <i class="hero-panel__scroll-cross" aria-hidden="true" />
       </div>
     </section>
 
-    <section class="statement-panel">
-      <div class="section-marker">02 <span>/</span> METHOD</div>
+    <section class="statement-panel relative min-h-[760px] border-b border-[rgba(35,47,61,0.24)] bg-[#eef0f2] px-[13vw] pb-[130px] pt-40 max-[760px]:min-h-0 max-[760px]:px-6 max-[760px]:pb-[100px] max-[760px]:pt-[145px]">
+      <div class="section-marker absolute left-[4.5vw] top-[54px] font-mono text-[9px] tracking-[0.17em] text-[#687687]">02 <span class="mx-[9px] text-[#a5afb9]">/</span> METHOD</div>
       <div class="statement-panel__block statement-panel__block--blue" aria-hidden="true" />
       <div class="statement-panel__block statement-panel__block--dark" aria-hidden="true" />
-      <div class="statement-panel__copy">
-        <p class="eyebrow">
+      <div class="statement-panel__copy relative z-2 w-[min(460px,52%)] max-[760px]:w-full">
+        <p class="eyebrow mb-7 flex items-center gap-[13px] font-mono text-[9px] tracking-[0.18em] text-[#6e7b8b]">
           <span>THE SPACE AROUND THE IMAGE</span>
-          <b>—</b>
+          <b class="font-normal text-[#253749]">—</b>
         </p>
-        <h2>
+        <h2 class="m-0 font-extralight leading-[0.78] tracking-[-0.1em] text-[clamp(65px,8vw,116px)] text-[#17212d] max-[760px]:text-[66px]">
           Leave room<br />
           for the<br />
           <em>presence.</em>
         </h2>
-        <p class="statement-panel__body">
+        <p class="statement-panel__body mb-[34px] ml-[7px] mt-[42px] max-w-[345px] font-mono text-[11px] leading-[2] text-[#6b7887]">
           The figure does not arrive as spectacle. It arrives as a message:
           do not be afraid; make room for the wounded; keep watch in the night.
         </p>
-        <NuxtLink to="/liturgy" class="underlined-link">
+        <NuxtLink to="/liturgy" class="underlined-link border-b border-[#607084] pb-[10px] font-mono text-[9px] tracking-[0.17em] text-[#202d3b] no-underline">
           READ THE NOTE
-          <span>↗</span>
+        <span class="ml-[15px] text-sm">↗</span>
         </NuxtLink>
       </div>
       <div class="statement-panel__register" aria-hidden="true">
@@ -192,43 +209,43 @@
       </div>
     </section>
 
-    <section class="archive-panel">
-      <div class="section-marker">03 <span>/</span> INDEX</div>
-      <div class="archive-panel__heading">
-        <p class="eyebrow">
+    <section class="archive-panel relative min-h-[750px] border-b border-[rgba(35,47,61,0.24)] bg-[#e6e9ed] px-[13vw] pb-[120px] pt-40 max-[760px]:min-h-0 max-[760px]:px-6 max-[760px]:pb-[100px] max-[760px]:pt-[145px]">
+      <div class="section-marker absolute left-[4.5vw] top-[54px] font-mono text-[9px] tracking-[0.17em] text-[#687687]">03 <span class="mx-[9px] text-[#a5afb9]">/</span> INDEX</div>
+      <div class="archive-panel__heading ml-[8%] max-[760px]:ml-0">
+        <p class="eyebrow mb-7 flex items-center gap-[13px] font-mono text-[9px] tracking-[0.18em] text-[#6e7b8b]">
           <span>WORKS IN PREPARATION</span>
-          <b>—</b>
+          <b class="font-normal text-[#253749]">—</b>
         </p>
-        <h2>
+        <h2 class="m-0 text-[clamp(65px,8vw,120px)] font-extralight leading-[0.78] tracking-[-0.1em] text-[#17212d] max-[760px]:text-[68px]">
           A small<br />
           <em>constellation.</em>
         </h2>
       </div>
-      <div class="archive-panel__list">
-        <NuxtLink to="/archive" class="index-row">
-          <span class="index-row__number">001</span>
-          <span class="index-row__name">THE ORBIT</span>
-          <span class="index-row__note">A STUDY OF DISTANCE</span>
-          <b>↗</b>
+      <div class="archive-panel__list ml-[8%] mt-[100px] w-[82%] max-[760px]:ml-0 max-[760px]:mt-[75px] max-[760px]:w-full">
+        <NuxtLink to="/archive" class="index-row grid min-h-[72px] grid-cols-[9%_35%_1fr_25px] items-center gap-3 border-t border-[rgba(52,64,77,0.3)] text-[#1b2531] no-underline hover:bg-white/25 max-[760px]:min-h-[88px] max-[760px]:grid-cols-[12%_1fr_24px]">
+          <span class="index-row__number font-mono text-[9px] tracking-[0.14em] text-[#7c8793]">001</span>
+          <span class="index-row__name text-base tracking-[0.05em] max-[760px]:text-sm">THE ORBIT</span>
+          <span class="index-row__note font-mono text-[9px] tracking-[0.14em] text-[#7c8793] max-[760px]:hidden">A STUDY OF DISTANCE</span>
+          <b class="text-lg font-light">↗</b>
         </NuxtLink>
-        <NuxtLink to="/archive" class="index-row">
-          <span class="index-row__number">002</span>
-          <span class="index-row__name">WINGS / FOLDED</span>
-          <span class="index-row__note">A STUDY OF STILLNESS</span>
-          <b>↗</b>
+        <NuxtLink to="/archive" class="index-row grid min-h-[72px] grid-cols-[9%_35%_1fr_25px] items-center gap-3 border-t border-[rgba(52,64,77,0.3)] text-[#1b2531] no-underline hover:bg-white/25 max-[760px]:min-h-[88px] max-[760px]:grid-cols-[12%_1fr_24px]">
+          <span class="index-row__number font-mono text-[9px] tracking-[0.14em] text-[#7c8793]">002</span>
+          <span class="index-row__name text-base tracking-[0.05em] max-[760px]:text-sm">WINGS / FOLDED</span>
+          <span class="index-row__note font-mono text-[9px] tracking-[0.14em] text-[#7c8793] max-[760px]:hidden">A STUDY OF STILLNESS</span>
+          <b class="text-lg font-light">↗</b>
         </NuxtLink>
-        <NuxtLink to="/archive" class="index-row">
-          <span class="index-row__number">003</span>
-          <span class="index-row__name">THE THRESHOLD</span>
-          <span class="index-row__note">A STUDY OF ARRIVAL</span>
-          <b>↗</b>
+        <NuxtLink to="/archive" class="index-row grid min-h-[72px] grid-cols-[9%_35%_1fr_25px] items-center gap-3 border-t border-[rgba(52,64,77,0.3)] text-[#1b2531] no-underline hover:bg-white/25 max-[760px]:min-h-[88px] max-[760px]:grid-cols-[12%_1fr_24px]">
+          <span class="index-row__number font-mono text-[9px] tracking-[0.14em] text-[#7c8793]">003</span>
+          <span class="index-row__name text-base tracking-[0.05em] max-[760px]:text-sm">THE THRESHOLD</span>
+          <span class="index-row__note font-mono text-[9px] tracking-[0.14em] text-[#7c8793] max-[760px]:hidden">A STUDY OF ARRIVAL</span>
+          <b class="text-lg font-light">↗</b>
         </NuxtLink>
       </div>
     </section>
 
-    <footer class="home-footer">
+    <footer class="home-footer flex min-h-[92px] items-center justify-between border-t border-[rgba(35,47,61,0.22)] px-[4.5vw] font-mono text-[8px] tracking-[0.16em] text-[#7b8692] max-[760px]:min-h-[120px] max-[760px]:flex-col max-[760px]:items-start max-[760px]:justify-evenly max-[760px]:px-6 max-[760px]:py-5">
       <span>TENSHI / VISUAL ARCHIVE</span>
-      <span>THE WORK IS IN PREPARATION</span>
+      <span class="max-[760px]:hidden">THE WORK IS IN PREPARATION</span>
       <span>MMXXVI — ∞</span>
     </footer>
   </main>
@@ -322,14 +339,14 @@ const ringStates: RingState[] = [
     0.68,  // 基础透明度
   ),
   createRingState(
-    0.44, // 半径：控制虚线环的大小
-    68, // 倾角：控制虚线环平面的倾斜程度
-    34, // 初始角度：控制虚线环的起始姿态
-    -0.28, // 空间运动速度：负数代表反方向运动
-    -0.58, // 轮缘旋转速度：控制虚线沿圆周移动的速度
-    [43, 61, 80], // 基础颜色：RGB 数值
-    true, // 是否使用虚线
-    0.54, // 基础透明度：范围 0 到 1
+    0.44, 
+    68,
+    34, 
+    -0.28, 
+    -0.58, 
+    [43, 61, 80], 
+    true,
+    0.54, 
   ),
 ];
 
@@ -762,15 +779,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Global reset */
-:global(*) {
-  box-sizing: border-box;
-}
-
-:global(html) {
-  scroll-behavior: smooth;
-}
-
 :global(body) {
   margin: 0;
   background: #e6e9ed;
@@ -778,18 +786,8 @@ onBeforeUnmount(() => {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Page canvas */
-.home-page {
-  overflow: hidden;
-  background: #e6e9ed;
-}
-
 /* Hero composition */
 .hero-panel {
-  position: relative;
-  min-height: max(820px, 100svh);
-  overflow: hidden;
-  border-bottom: 1px solid rgba(35, 47, 61, 0.28);
   background:
     linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)),
     #e6e9ed;
@@ -805,90 +803,7 @@ onBeforeUnmount(() => {
   mask-image: linear-gradient(to bottom, transparent, black 16%, black 86%, transparent);
 }
 
-/* System labels */
-.hero-panel__chrome {
-  position: absolute;
-  z-index: 5;
-  top: 117px;
-  left: 4.5vw;
-  right: 4.5vw;
-  display: flex;
-  justify-content: space-between;
-  color: #667484;
-  font: 8px "Courier New", monospace;
-  letter-spacing: 0.18em;
-}
-
-.hero-panel__chrome span:first-child {
-  color: #1f2c3a;
-}
-
 /* Coordinate field */
-.hero-panel__coordinates {
-  position: absolute;
-  z-index: 1;
-  top: 47%;
-  left: 50%;
-  width: min(58vw, 760px);
-  aspect-ratio: 1;
-  border: 1px solid rgba(55, 73, 91, 0.17);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.coordinate {
-  position: absolute;
-  color: #58697b;
-  font: 9px "Courier New", monospace;
-  letter-spacing: 0.16em;
-}
-
-.coordinate--north {
-  top: -19px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.coordinate--east {
-  top: 50%;
-  right: -23px;
-  transform: translateY(-50%);
-}
-
-.coordinate--south {
-  bottom: -19px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.coordinate--west {
-  top: 50%;
-  left: -23px;
-  transform: translateY(-50%);
-}
-
-/* Background rays */
-.hero-panel__rays {
-  position: absolute;
-  z-index: 1;
-  top: 47%;
-  left: 50%;
-  width: min(65vw, 840px);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-}
-
-.hero-panel__rays span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 50%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.72);
-  transform: rotate(var(--ray)) translateX(0);
-  transform-origin: left center;
-}
-
 .hero-panel__signal-links {
   display: block;
 }
@@ -901,57 +816,7 @@ onBeforeUnmount(() => {
 
 /* Orbital geometry */
 /* 保留原来两个环的空间 TypeScript 逐段绘制。 */
-.hero-panel__orbit {
-  position: absolute;
-  z-index: 1;
-  top: 47%;
-  left: 50%;
-  width: min(72vw, 930px);
-  height: min(72vw, 930px);
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  will-change: transform;
-}
-
 /* Cross emitter */
-.hero-panel__cross {
-  position: absolute;
-  z-index: 2;
-  top: 47%;
-  left: 50%;
-  width: min(13vw, 170px);
-  aspect-ratio: 1;
-  color: rgba(31, 46, 63, 0.58);
-  transform: translate(-50%, -50%);
-}
-
-.hero-panel__cross-vertical,
-.hero-panel__cross-horizontal {
-  position: absolute;
-  background: currentColor;
-}
-
-.hero-panel__cross-vertical {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-}
-
-.hero-panel__cross-horizontal {
-  top: 50%;
-  right: 0;
-  left: 0;
-  height: 1px;
-}
-
-.hero-panel__cross-ring {
-  position: absolute;
-  inset: 22%;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-
 .hero-panel__cross-emitter {
   position: absolute;
   z-index: 2;
@@ -1103,31 +968,7 @@ onBeforeUnmount(() => {
 
 
 
-.hero-panel__copy {
-  position: absolute;
-  z-index: 4;
-  top: 31%;
-  left: 6%;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  margin: 0 0 28px;
-  color: #6e7b8b;
-  font: 9px "Courier New", monospace;
-  letter-spacing: 0.18em;
-}
-
-.eyebrow b {
-  color: #253749;
-  font-weight: 400;
-}
-
-.hero-panel h1,
-.statement-panel h2,
-.archive-panel h2 {
+.hero-panel h1 {
   margin: 0;
   color: #17212d;
   font-weight: 200;
@@ -1167,32 +1008,7 @@ onBeforeUnmount(() => {
   margin-left: 0.045em;
 }
 
-.hero-panel__intro {
-  margin: 40px 0 0 7px;
-  color: #6c7988;
-  font: 11px/1.85 "Courier New", monospace;
-  letter-spacing: 0.04em;
-}
-
 /* Reserved artwork field */
-.artwork-field {
-  position: absolute;
-  z-index: 3;
-  top: 16%;
-  right: 7.5%;
-  width: min(38vw, 500px);
-  height: 68%;
-}
-
-.artwork-field__frame {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border: 1px solid rgba(43, 62, 81, 0.42);
-  background: rgba(234, 238, 242, 0.24);
-  box-shadow: 14px 16px 0 rgba(48, 69, 89, 0.06);
-}
-
 .artwork-field__beam {
   position: absolute;
   z-index: 2;
@@ -1320,66 +1136,6 @@ onBeforeUnmount(() => {
   bottom: 28%;
 }
 
-.hero-panel__legend {
-  position: absolute;
-  z-index: 4;
-  bottom: 20%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #718092;
-  font: 8px "Courier New", monospace;
-  letter-spacing: 0.16em;
-}
-
-.hero-panel__legend--left {
-  left: 10.5vw;
-}
-
-.hero-panel__legend--right {
-  right: 7.5vw;
-}
-
-.legend-marker {
-  width: 8px;
-  height: 8px;
-  border: 1px solid #2453cc;
-  border-radius: 50%;
-}
-
-.hero-panel__verse {
-  position: absolute;
-  z-index: 4;
-  right: 7.5vw;
-  bottom: 29%;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  color: #536477;
-  font: 8px/1.5 "Courier New", monospace;
-  letter-spacing: 0.16em;
-  text-align: right;
-}
-
-.hero-panel__verse b {
-  color: #2453cc;
-  font-weight: 400;
-}
-.hero-panel__scroll {
-  position: absolute;
-  z-index: 4;
-  bottom: 30px;
-  left: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  transform: translateX(-50%);
-  color: #718092;
-  font: 8px "Courier New", monospace;
-  letter-spacing: 0.19em;
-}
-
 .hero-panel__scroll-cross {
   position: relative;
   width: 18px;
@@ -1412,34 +1168,6 @@ onBeforeUnmount(() => {
 }
 
 
-/* Method section */
-.statement-panel,
-/* Archive section */
-.archive-panel {
-  position: relative;
-  border-bottom: 1px solid rgba(35, 47, 61, 0.24);
-}
-
-.statement-panel {
-  min-height: 760px;
-  padding: 160px 13vw 130px;
-  background: #eef0f2;
-}
-
-.section-marker {
-  position: absolute;
-  top: 54px;
-  left: 4.5vw;
-  color: #687687;
-  font: 9px "Courier New", monospace;
-  letter-spacing: 0.17em;
-}
-
-.section-marker span {
-  margin: 0 9px;
-  color: #a5afb9;
-}
-
 .statement-panel__block {
   position: absolute;
   opacity: 0.8;
@@ -1461,37 +1189,6 @@ onBeforeUnmount(() => {
   height: 70px;
   background: #1c2733;
   opacity: 0.92;
-}
-
-.statement-panel__copy {
-  position: relative;
-  z-index: 2;
-  width: min(460px, 52%);
-}
-
-.statement-panel h2 {
-  font-size: clamp(65px, 8vw, 116px);
-}
-
-.statement-panel__body {
-  max-width: 345px;
-  margin: 42px 0 34px 7px;
-  color: #6b7887;
-  font: 11px/2 "Courier New", monospace;
-}
-
-.underlined-link {
-  color: #202d3b;
-  border-bottom: 1px solid #607084;
-  padding-bottom: 10px;
-  font: 9px "Courier New", monospace;
-  letter-spacing: 0.17em;
-  text-decoration: none;
-}
-
-.underlined-link span {
-  margin-left: 15px;
-  font-size: 14px;
 }
 
 .statement-panel__cross {
@@ -1537,74 +1234,6 @@ onBeforeUnmount(() => {
   width: 150px;
   height: 1px;
   background: #798696;
-}
-
-.archive-panel {
-  min-height: 750px;
-  padding: 160px 13vw 120px;
-  background: #e6e9ed;
-}
-
-.archive-panel__heading {
-  margin-left: 8%;
-}
-
-.archive-panel h2 {
-  font-size: clamp(65px, 8vw, 120px);
-}
-
-.archive-panel__list {
-  width: 82%;
-  margin: 100px 0 0 8%;
-}
-
-.index-row {
-  display: grid;
-  grid-template-columns: 9% 35% 1fr 25px;
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  border-top: 1px solid rgba(52, 64, 77, 0.3);
-  color: #1b2531;
-  text-decoration: none;
-}
-
-.index-row:last-child {
-  border-bottom: 1px solid rgba(52, 64, 77, 0.3);
-}
-
-.index-row:hover {
-  background: rgba(255, 255, 255, 0.26);
-}
-
-.index-row__number,
-.index-row__note {
-  color: #7c8793;
-  font: 9px "Courier New", monospace;
-  letter-spacing: 0.14em;
-}
-
-.index-row__name {
-  font-size: 16px;
-  letter-spacing: 0.05em;
-}
-
-.index-row b {
-  font-size: 18px;
-  font-weight: 300;
-}
-
-/* Footer */
-.home-footer {
-  display: flex;
-  min-height: 92px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 4.5vw;
-  border-top: 1px solid rgba(35, 47, 61, 0.22);
-  color: #7b8692;
-  font: 8px "Courier New", monospace;
-  letter-spacing: 0.16em;
 }
 
 /* Motion */
@@ -1707,39 +1336,8 @@ onBeforeUnmount(() => {
     right: 24px;
     height: 48%;
   }
-  .hero-panel__chrome {
-    top: 102px;
-    right: 20px;
-    left: 20px;
-  }
-
-  .hero-panel__chrome span:nth-child(2) {
-    display: none;
-  }
-
-  .hero-panel__coordinates {
-    top: 55%;
-    width: 90vw;
-  }
-
-  .hero-panel__cross {
-    top: 55%;
-    width: 115px;
-  }
-
   .hero-panel__cross-label {
     left: calc(100% + 8px);
-  }
-
-  .hero-panel__rays {
-    top: 55%;
-    width: 105vw;
-  }
-
-  .hero-panel__orbit {
-    top: 55%;
-    width: 130vw;
-    height: 130vw;
   }
 
   .hero-panel__laser-field {
@@ -1797,14 +1395,6 @@ onBeforeUnmount(() => {
     width: 120px;
   }
 
-  .statement-panel__copy {
-    width: 100%;
-  }
-
-  .statement-panel h2 {
-    font-size: 66px;
-  }
-
   .statement-panel__register {
     right: 24px;
     bottom: 8%;
@@ -1821,47 +1411,5 @@ onBeforeUnmount(() => {
     width: 70px;
   }
 
-  .archive-panel {
-    min-height: auto;
-    padding: 145px 24px 100px;
-  }
-
-  .archive-panel__heading {
-    margin-left: 0;
-  }
-
-  .archive-panel h2 {
-    font-size: 68px;
-  }
-
-  .archive-panel__list {
-    width: 100%;
-    margin: 75px 0 0;
-  }
-
-  .index-row {
-    grid-template-columns: 12% 1fr 24px;
-    min-height: 88px;
-  }
-
-  .index-row__note {
-    display: none;
-  }
-
-  .index-row__name {
-    font-size: 14px;
-  }
-
-  .home-footer {
-    min-height: 120px;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: space-evenly;
-    padding: 20px 24px;
-  }
-
-  .home-footer span:nth-child(2) {
-    display: none;
-  }
 }
 </style>
