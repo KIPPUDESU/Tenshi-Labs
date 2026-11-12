@@ -5,7 +5,7 @@
       class="hero-panel relative min-h-[max(820px,100svh)] overflow-hidden border-b border-[rgba(35,47,61,0.28)]"
     >
       <div
-        class="hero-panel__chrome absolute inset-x-[4.5vw] top-[117px] z-5 flex items-center justify-between font-mono text-[clamp(18px,2.2vw,30px)] tracking-[0.18em] text-[#667484] max-[760px]:left-5 max-[760px]:right-5 max-[760px]:top-[102px] max-[760px]:text-[7px] max-[760px]:tracking-[0.04em]"
+        class="hero-panel__chrome absolute inset-x-[4.5vw] top-[117px] z-5 flex items-center justify-between font-['Courier_New',monospace] text-[clamp(18px,1.0vw,30px)] tracking-[0.18em] text-[#667484] max-[760px]:left-5 max-[760px]:right-5 max-[760px]:top-[102px] max-[760px]:text-[7px] max-[760px]:tracking-[0.04em]"
       >
         <span class="text-[#1f2c3a]">ACT / 01</span>
         <span class="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[inherit] tracking-[0.14em] text-[#1f2c3a] max-[760px]:hidden">THE FIGURE SYSTEM</span>
@@ -277,8 +277,12 @@ let resizeObserver: ResizeObserver | undefined;
 let measureFrame = 0;
 let orbitFrame = 0;
 let lastOrbitTime = 0;
+let orbitIntroStart = 0;
 let orbitContext: CanvasRenderingContext2D | null = null;
 let orbitSize = 0;
+
+// 入场稍微留出时间，让环从一个安静的点开始长成完整轨道。
+const ringEntranceDuration = 4.8;
 
 // 一个点在空间中的位置；z 值只用来判断它更靠近我们还是更远。
 interface Vector3 {
@@ -298,6 +302,8 @@ interface RingState {
   nextVelocityChange: number;
   rimPhase: number;
   rimAngularVelocity: number;
+  introAngle: number;
+  introDirection: 1 | -1;
   color: [number, number, number];
   dashed: boolean;
   baseOpacity: number;
@@ -439,6 +445,9 @@ function createRingState(
     nextVelocityChange: randomBetween(7, 12),
     rimPhase: 0,
     rimAngularVelocity,
+    // 入场只允许一个方向扫描，固定起点不会向两侧扩张。
+    introAngle: dashed ? Math.PI * 0.5 : 0,
+    introDirection: 1,
     color,
     dashed,
     baseOpacity,
@@ -542,7 +551,10 @@ function drawRingSegments(
   context: CanvasRenderingContext2D,
   segments: RingSegment[],
   front: boolean,
+  entranceOpacity: number,
 ) {
+  context.save();
+  context.globalAlpha = entranceOpacity;
   const ordered = segments
     .filter((segment) => (segment.depth >= 0) === front)
     .sort((a, b) => a.depth - b.depth);
@@ -570,6 +582,8 @@ function drawRingSegments(
     context.lineWidth = lineWidth;
     context.stroke();
   }
+
+  context.restore();
 }
 
 function positiveModulo(value: number, modulus: number) {
@@ -577,7 +591,7 @@ function positiveModulo(value: number, modulus: number) {
 }
 
 // 一个圆环由许多小线段组成，这样它可以自然地翻到屏幕后方
-function createRingSegments(ring: RingState): RingSegment[] {
+function createRingSegments(ring: RingState, revealProgress: number): RingSegment[] {
   const frame = getRingFrame(ring);
   const segments: RingSegment[] = [];
   const sampleCount = 180;
@@ -586,10 +600,20 @@ function createRingSegments(ring: RingState): RingSegment[] {
   // z 深度的最大值
   // 投影短轴两端的深度
   const maximumDepth = ring.radius * Math.sqrt(Math.max(0, 1 - ellipseRatio ** 2));
+  const revealLength = Math.max(0.02, revealProgress * Math.PI * 2);
 
   for (let index = 0; index < sampleCount; index += 1) {
     const angle = index / sampleCount * Math.PI * 2;
     const nextAngle = (index + 1) / sampleCount * Math.PI * 2;
+    // 只判断线段中点到固定起点的单向距离，避免前后分层造成双向生长。
+    const segmentMidpoint = (angle + nextAngle) * 0.5;
+    const revealDistance = positiveModulo(
+      (segmentMidpoint - ring.introAngle) * ring.introDirection,
+      Math.PI * 2,
+    );
+    if (revealDistance > revealLength) {
+      continue;
+    }
     const a = project(getRingPoint(frame, ring.radius, angle));
     const b = project(getRingPoint(frame, ring.radius, nextAngle));
     const depth = (a.z + b.z) * 0.5;
@@ -618,6 +642,7 @@ function createRingSegments(ring: RingState): RingSegment[] {
 function drawRingNormal(
   context: CanvasRenderingContext2D,
   ring: RingState,
+  entranceOpacity: number,
 ) {
   // 中心向两端延伸的长度
   const normalHalfLength = 0.32;
@@ -657,6 +682,7 @@ function drawRingNormal(
   );
 
   context.save();
+  context.globalAlpha = entranceOpacity;
   context.beginPath();
   context.moveTo(start.x, start.y);
   context.lineTo(end.x, end.y);
@@ -694,20 +720,30 @@ function animateOrbits(now: number) {
     lastOrbitTime = now;
   }
 
+  if (!orbitIntroStart) {
+    orbitIntroStart = now;
+  }
+
   const delta = Math.min((now - lastOrbitTime) / 1000, 0.05);
   const elapsed = now / 1000;
+  const entranceProgress = Math.min(
+    1,
+    (now - orbitIntroStart) / (ringEntranceDuration * 1000),
+  );
+  const easedEntrance = 1 - Math.pow(1 - entranceProgress, 3);
+  const entranceOpacity = Math.min(1, entranceProgress * 1.45);
   lastOrbitTime = now;
   orbitContext.clearRect(0, 0, orbitSize, orbitSize);
 
   const segments: RingSegment[] = [];
   for (const ring of ringStates) {
     updateRingState(ring, elapsed, delta);
-    drawRingNormal(orbitContext, ring);
-    segments.push(...createRingSegments(ring));
+    drawRingNormal(orbitContext, ring, entranceOpacity);
+    segments.push(...createRingSegments(ring, easedEntrance));
   }
 
-  drawRingSegments(orbitContext, segments, false);
-  drawRingSegments(orbitContext, segments, true);
+  drawRingSegments(orbitContext, segments, false, entranceOpacity);
+  drawRingSegments(orbitContext, segments, true, entranceOpacity);
   orbitFrame = requestAnimationFrame(animateOrbits);
 }
 
