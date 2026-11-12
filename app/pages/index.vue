@@ -23,8 +23,11 @@
         />
       </div>
 
-      <div class="hero-panel__orbit hero-panel__orbit--outer" aria-hidden="true" />
-      <div class="hero-panel__orbit hero-panel__orbit--inner" aria-hidden="true" />
+      <canvas
+        ref="orbitCanvas"
+        class="hero-panel__orbit"
+        aria-hidden="true"
+      />
 
       <div class="hero-panel__cross" aria-hidden="true">
         <span class="hero-panel__cross-vertical" />
@@ -122,7 +125,7 @@
       </div>
 
       <div class="artwork-field" aria-label="Reserved field for the angel line drawing">
-        <!-- Place the supplied angel linework inside this field. -->
+        <!-- 放置图画 -->
         <div class="artwork-field__frame">
           <span class="artwork-field__corner artwork-field__corner--tr" />
           <span class="artwork-field__corner artwork-field__corner--bl" />
@@ -245,11 +248,451 @@ interface RayTarget {
   color: string;
 }
 
+// 页面骨架继续由 Vue 保持
+// Canvas 接管环绘制
+// 页面结构仍由 Vue 保持；Canvas 只负责把两个环画得更像空间中的投影。
+// 页面骨架继续由 Vue 保持；Canvas 只接管中间两个环的绘制。
 const heroPanel = ref<HTMLElement | null>(null);
 const emitter = ref<HTMLElement | null>(null);
+const orbitCanvas = ref<HTMLCanvasElement | null>(null);
 const rayTargets = ref<RayTarget[]>([]);
 let resizeObserver: ResizeObserver | undefined;
 let measureFrame = 0;
+let orbitFrame = 0;
+let lastOrbitTime = 0;
+let orbitContext: CanvasRenderingContext2D | null = null;
+let orbitSize = 0;
+
+// 一个点在空间中的位置；z 值只用来判断它更靠近我们还是更远。
+interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// 每一条环都拥有自己的半径、倾角和速度，因此它们会自然地产生差速。
+interface RingState {
+  baseNormal: Vector3;
+  radius: number;
+  phase: number;
+  angularVelocity: number;
+  angularVelocityTarget: number;
+  baseAngularVelocity: number;
+  nextVelocityChange: number;
+  rimPhase: number;
+  rimAngularVelocity: number;
+  color: [number, number, number];
+  dashed: boolean;
+  baseOpacity: number;
+}
+
+// 把环切成很多小段，才能分别照顾它们的前后关系和明暗。
+interface RingSegment {
+  a: Vector3;
+  b: Vector3;
+  baseOpacity: number;
+  color: [number, number, number];
+  contrast: number;
+  dashed: boolean;
+  depth: number;
+  depthFactor: number;
+  angle: number;
+  dashPhase: number;
+}
+
+// 23.5° 的主轴让这两个环带拥有一个稳定的天球倾向。
+const radians = Math.PI / 180;
+const armillaryAxis = normalize({
+  x: Math.sin(23.5 * radians),
+  y: Math.cos(23.5 * radians),
+  z: 0.08,
+});
+const armillaryPerpendicular = normalize(
+  cross(armillaryAxis, { x: 1, y: 0, z: 0 }),
+);
+const ringStates: RingState[] = [
+  createRingState(
+    0.46,  // 半径
+    58,    // 倾角
+    -26,   // 初始角度
+    0.54,  // 空间运动速度
+    0.05,  // 旋转速度
+    [43, 61, 80],  // 颜色
+    false,  // 实线
+    0.68,  // 基础透明度
+  ),
+  createRingState(
+    0.44, // 半径：控制虚线环的大小
+    68, // 倾角：控制虚线环平面的倾斜程度
+    34, // 初始角度：控制虚线环的起始姿态
+    -0.28, // 空间运动速度：负数代表反方向运动
+    -0.58, // 轮缘旋转速度：控制虚线沿圆周移动的速度
+    [43, 61, 80], // 基础颜色：RGB 数值
+    true, // 是否使用虚线
+    0.54, // 基础透明度：范围 0 到 1
+  ),
+];
+
+// 轻微的速度变化让运动有呼吸感
+function randomBetween(min: number, max: number) {
+  return min + Math.random() * (max - min);
+}
+
+// 把不同方向的空间变化合成为一个新的位置
+function add(a: Vector3, b: Vector3): Vector3 {
+  return {
+    x: a.x + b.x,
+    y: a.y + b.y,
+    z: a.z + b.z,
+  };
+}
+
+// 寻找垂直于两个方向的新方向
+// 用来建立环的平面
+function cross(a: Vector3, b: Vector3): Vector3 {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+// 两个方向之间的夹角关系
+function dot(a: Vector3, b: Vector3) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+// 向量长度与单位化，让几何计算保持稳定、容易阅读。
+function lengthOf(vector: Vector3) {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+
+function normalize(vector: Vector3): Vector3 {
+  const length = lengthOf(vector) || 1;
+  return scale(vector, 1 / length);
+}
+
+// 把一个方向放大或缩小
+// 半径和轴长都从这里开始
+function scale(vector: Vector3, amount: number): Vector3 {
+  return {
+    x: vector.x * amount,
+    y: vector.y * amount,
+    z: vector.z * amount,
+  };
+}
+
+// 环的法线围绕主轴缓慢转动
+function rotateAroundAxis(vector: Vector3, axis: Vector3, angle: number): Vector3 {
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+
+  return add(
+    add(scale(vector, cosine), scale(cross(axis, vector), sine)),
+    scale(axis, dot(axis, vector) * (1 - cosine)),
+  );
+}
+
+// 外环实线，内环虚线
+function createRingState(
+  radius: number,
+  inclination: number,
+  phase: number,
+  angularVelocity: number,
+  rimAngularVelocity: number,
+  color: [number, number, number],
+  dashed: boolean,
+  baseOpacity: number,
+): RingState {
+  const inclinationRadians = inclination * radians;
+  const baseNormal = normalize(
+    add(
+      scale(armillaryAxis, Math.cos(inclinationRadians)),
+      scale(armillaryPerpendicular, Math.sin(inclinationRadians)),
+    ),
+  );
+
+  return {
+    baseNormal,
+    radius,
+    phase: phase * radians,
+    angularVelocity,
+    angularVelocityTarget: angularVelocity,
+    baseAngularVelocity: angularVelocity,
+    nextVelocityChange: randomBetween(7, 12),
+    rimPhase: 0,
+    rimAngularVelocity,
+    color,
+    dashed,
+    baseOpacity,
+  };
+}
+
+// 速度采用缓慢靠近目标值的方式变化
+// 有惯性的机械装置
+function updateRingState(ring: RingState, elapsed: number, delta: number) {
+  if (elapsed >= ring.nextVelocityChange) {
+    ring.angularVelocityTarget =
+      ring.baseAngularVelocity * randomBetween(0.92, 1.08);
+    ring.nextVelocityChange = elapsed + randomBetween(10, 18);
+  }
+
+  const velocityEase = 1 - Math.exp(-delta * 0.6);
+  ring.angularVelocity +=
+    (ring.angularVelocityTarget - ring.angularVelocity) * velocityEase;
+  ring.phase += ring.angularVelocity * delta;
+  // 虚线环圆周转动
+  // 实线环保留独立差速
+  ring.rimPhase += ring.rimAngularVelocity * delta;
+}
+
+// 由环的法线建立两个平面方向
+// 之后每个圆环点都能被定位
+function getRingFrame(ring: RingState) {
+  const normal = rotateAroundAxis(ring.baseNormal, armillaryAxis, ring.phase);
+  const reference = Math.abs(normal.z) > 0.92
+    ? { x: 1, y: 0, z: 0 }
+    : { x: 0, y: 0, z: 1 };
+  const basisU = normalize(cross(reference, normal));
+  const basisV = normalize(cross(normal, basisU));
+
+  return { basisU, basisV, normal };
+}
+
+// 在环的平面里取一个点，再把它放回三维空间
+function getRingPoint(
+  frame: ReturnType<typeof getRingFrame>,
+  radius: number,
+  angle: number,
+): Vector3 {
+  return add(
+    scale(frame.basisU, Math.cos(angle) * radius),
+    scale(frame.basisV, Math.sin(angle) * radius),
+  );
+}
+
+// 暂时不改变直径
+function project(point: Vector3): Vector3 {
+  return {
+    x: orbitSize * 0.5 + point.x * orbitSize,
+    y: orbitSize * 0.5 - point.y * orbitSize,
+    z: point.z,
+  };
+}
+
+function mixColor(
+  from: [number, number, number],
+  to: [number, number, number],
+  amount: number,
+): [number, number, number] {
+  const weight = Math.max(0, Math.min(1, amount));
+  return [
+    Math.round(from[0] + (to[0] - from[0]) * weight),
+    Math.round(from[1] + (to[1] - from[1]) * weight),
+    Math.round(from[2] + (to[2] - from[2]) * weight),
+  ];
+}
+
+// 短轴越长，前后颜色越接近
+// 短轴越短，明暗差越明显
+function getSegmentColor(segment: RingSegment): [number, number, number] {
+  // 靠近一端
+  const ringNearColorMix = 0.92;
+  // 远离一端
+  const ringFarColorMix = 0.18;
+  // 对比度
+  const ringContrastBoost = 4.8; 
+  const background: [number, number, number] = [230, 233, 237];
+  const deep: [number, number, number] = [14, 23, 34];
+  // 长轴上的深度接近零
+  // 短轴端点上的深度最大，颜色自然形成渐变
+  const axialContrast = Math.min(
+    1,
+    segment.contrast * segment.depthFactor * ringContrastBoost,
+  );
+  const neutral = mixColor(segment.color, background, 0.06);
+
+  if (segment.depth >= 0) {
+    return mixColor(neutral, deep, axialContrast * ringNearColorMix);
+  }
+
+  return mixColor(neutral, background, axialContrast * ringFarColorMix);
+}
+
+// 先画背面，再画正面
+// 前后关系只影响叠放，不再决定运动
+function drawRingSegments(
+  context: CanvasRenderingContext2D,
+  segments: RingSegment[],
+  front: boolean,
+) {
+  const ordered = segments
+    .filter((segment) => (segment.depth >= 0) === front)
+    .sort((a, b) => a.depth - b.depth);
+
+  for (const segment of ordered) {
+    // 用角度推进虚线
+    // 而不是按绘制顺序切段，轮缘转动才会连续
+    const dashIndex = Math.floor(
+      positiveModulo(segment.angle + segment.dashPhase, Math.PI * 2)
+      / (Math.PI * 2 / 180),
+    );
+    if (segment.dashed && dashIndex % 6 > 2) {
+      continue;
+    }
+
+    const color = getSegmentColor(segment);
+    const depthDifference = segment.contrast * segment.depthFactor;
+    const opacity = segment.baseOpacity * (0.66 + depthDifference * 0.28);
+    const lineWidth = 0.66 + depthDifference * (front ? 0.34 : 0.18);
+
+    context.beginPath();
+    context.moveTo(segment.a.x, segment.a.y);
+    context.lineTo(segment.b.x, segment.b.y);
+    context.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${opacity})`;
+    context.lineWidth = lineWidth;
+    context.stroke();
+  }
+}
+
+function positiveModulo(value: number, modulus: number) {
+  return (value % modulus + modulus) % modulus;
+}
+
+// 一个圆环由许多小线段组成，这样它可以自然地翻到屏幕后方
+function createRingSegments(ring: RingState): RingSegment[] {
+  const frame = getRingFrame(ring);
+  const segments: RingSegment[] = [];
+  const sampleCount = 180;
+  const ellipseRatio = Math.abs(frame.normal.z);
+  const contrast = Math.pow(1 - ellipseRatio, 0.82);
+  // z 深度的最大值
+  // 投影短轴两端的深度
+  const maximumDepth = ring.radius * Math.sqrt(Math.max(0, 1 - ellipseRatio ** 2));
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const angle = index / sampleCount * Math.PI * 2;
+    const nextAngle = (index + 1) / sampleCount * Math.PI * 2;
+    const a = project(getRingPoint(frame, ring.radius, angle));
+    const b = project(getRingPoint(frame, ring.radius, nextAngle));
+    const depth = (a.z + b.z) * 0.5;
+    const depthFactor = maximumDepth
+      ? Math.min(1, Math.abs(depth) / maximumDepth)
+      : 0;
+
+    segments.push({
+      a,
+      b,
+      baseOpacity: ring.baseOpacity,
+      color: ring.color,
+      contrast,
+      dashed: ring.dashed,
+      depth,
+      depthFactor,
+      angle,
+      dashPhase: ring.rimPhase,
+    });
+  }
+
+  return segments;
+}
+
+// 圆环当前的法线
+function drawRingNormal(
+  context: CanvasRenderingContext2D,
+  ring: RingState,
+) {
+  // 中心向两端延伸的长度
+  const normalHalfLength = 0.32;
+  // 过渡集中在端点
+  const normalGradientPower = 0.25;
+  // 靠近一端向深色靠近的程度
+  const nearColorMix = 0.92;
+  // 远离一端向背景靠近的程度
+  const farColorMix = 0.78;
+  // 法线粗细
+  const normalLineWidth = 1;
+  const normal = getRingFrame(ring).normal;
+  const startPoint = scale(normal, -normalHalfLength);
+  const endPoint = scale(normal, normalHalfLength);
+  const start = project(startPoint);
+  const end = project(endPoint);
+  const background: [number, number, number] = [230, 233, 237];
+  const deep: [number, number, number] = [14, 23, 34];
+  const neutral = mixColor(ring.color, background, 0.06);
+  const contrast = Math.pow(Math.abs(normal.z), normalGradientPower);
+  const nearColor = mixColor(neutral, deep, contrast * nearColorMix);
+  const farColor = mixColor(neutral, background, contrast * farColorMix);
+  const startIsNear = startPoint.z >= endPoint.z;
+  const gradient = context.createLinearGradient(start.x, start.y, end.x, end.y);
+
+  gradient.addColorStop(
+    0,
+    startIsNear
+      ? `rgb(${nearColor.join(", ")})`
+      : `rgb(${farColor.join(", ")})`,
+  );
+  gradient.addColorStop(
+    1,
+    startIsNear
+      ? `rgb(${farColor.join(", ")})`
+      : `rgb(${nearColor.join(", ")})`,
+  );
+
+  context.save();
+  context.beginPath();
+  context.moveTo(start.x, start.y);
+  context.lineTo(end.x, end.y);
+  context.setLineDash(ring.dashed ? [4, 4] : []);
+  context.strokeStyle = gradient;
+  context.lineWidth = normalLineWidth;
+  context.stroke();
+  context.restore();
+}
+
+// Canvas 随页面尺寸调整
+function resizeOrbitCanvas() {
+  const canvas = orbitCanvas.value;
+  if (!canvas) {
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const pixelRatio = window.devicePixelRatio || 1;
+  orbitSize = Math.min(rect.width, rect.height);
+  canvas.width = Math.round(orbitSize * pixelRatio);
+  canvas.height = Math.round(orbitSize * pixelRatio);
+  orbitContext = canvas.getContext("2d");
+  orbitContext?.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
+
+// 每一帧更新位置、深度、透明度
+function animateOrbits(now: number) {
+  if (!orbitContext || !orbitSize) {
+    orbitFrame = requestAnimationFrame(animateOrbits);
+    return;
+  }
+
+  if (!lastOrbitTime) {
+    lastOrbitTime = now;
+  }
+
+  const delta = Math.min((now - lastOrbitTime) / 1000, 0.05);
+  const elapsed = now / 1000;
+  lastOrbitTime = now;
+  orbitContext.clearRect(0, 0, orbitSize, orbitSize);
+
+  const segments: RingSegment[] = [];
+  for (const ring of ringStates) {
+    updateRingState(ring, elapsed, delta);
+    drawRingNormal(orbitContext, ring);
+    segments.push(...createRingSegments(ring));
+  }
+
+  drawRingSegments(orbitContext, segments, false);
+  drawRingSegments(orbitContext, segments, true);
+  orbitFrame = requestAnimationFrame(animateOrbits);
+}
 
 function measureRayTargets() {
   if (!heroPanel.value || !emitter.value) {
@@ -295,6 +738,7 @@ function measureRayTargets() {
 }
 
 function scheduleMeasure() {
+  resizeOrbitCanvas();
   cancelAnimationFrame(measureFrame);
   measureFrame = requestAnimationFrame(measureRayTargets);
 }
@@ -305,12 +749,15 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(scheduleMeasure);
   resizeObserver.observe(heroPanel.value!);
   document.querySelectorAll(".glyph-point").forEach((point) => resizeObserver?.observe(point));
+  resizeOrbitCanvas();
   measureRayTargets();
+  orbitFrame = requestAnimationFrame(animateOrbits);
 });
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   cancelAnimationFrame(measureFrame);
+  cancelAnimationFrame(orbitFrame);
 });
 </script>
 
@@ -453,27 +900,17 @@ onBeforeUnmount(() => {
 
 
 /* Orbital geometry */
+/* 保留原来两个环的空间 TypeScript 逐段绘制。 */
 .hero-panel__orbit {
   position: absolute;
   z-index: 1;
   top: 47%;
   left: 50%;
-  border: 1px solid rgba(43, 61, 80, 0.25);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) rotate(-26deg);
-}
-
-.hero-panel__orbit--outer {
   width: min(72vw, 930px);
-  height: min(22vw, 280px);
-}
-
-.hero-panel__orbit--inner {
-  width: min(47vw, 610px);
-  height: min(67vw, 870px);
-  transform: translate(-50%, -50%) rotate(34deg);
-  border-style: dashed;
-  opacity: 0.5;
+  height: min(72vw, 930px);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  will-change: transform;
 }
 
 /* Cross emitter */
@@ -554,7 +991,7 @@ onBeforeUnmount(() => {
   top: var(--ray-y);
   left: var(--ray-x);
   width: var(--ray-length);
-  height: 1px;
+  height: 2px;
   background: var(--ray-color);
   opacity: var(--ray-opacity, 0.9);
   transform-origin: left center;
@@ -1301,14 +1738,7 @@ onBeforeUnmount(() => {
 
   .hero-panel__orbit {
     top: 55%;
-  }
-
-  .hero-panel__orbit--outer {
-    width: 125vw;
-  }
-
-  .hero-panel__orbit--inner {
-    width: 85vw;
+    width: 130vw;
     height: 130vw;
   }
 
