@@ -27,10 +27,10 @@
         aria-hidden="true"
       >
         <span
-          v-for="ray in 18"
+          v-for="ray in 24"
           :key="ray"
-        class="absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-white/70 [transform:rotate(var(--ray))]"
-          :style="{ '--ray': `${ray * 10}deg` }"
+          class="hero-panel__ray absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-white/70"
+          :style="{ '--ray-index': ray - 1 }"
         />
       </div>
 
@@ -44,9 +44,11 @@
         class="hero-panel__cross absolute left-1/2 top-[47%] z-2 aspect-square w-[min(13vw,170px)] -translate-x-1/2 -translate-y-1/2 text-[rgba(31,46,63,0.58)] max-[760px]:top-[55%] max-[760px]:w-[115px]"
         aria-hidden="true"
       >
-        <span class="hero-panel__cross-vertical absolute bottom-0 left-1/2 top-0 w-px bg-current" />
-        <span class="hero-panel__cross-horizontal absolute left-0 right-0 top-1/2 h-px bg-current" />
-        <span class="hero-panel__cross-ring absolute inset-[22%] rounded-full border border-current" />
+        <span class="hero-panel__cross-motion absolute inset-0">
+          <span class="hero-panel__cross-vertical absolute bottom-0 left-1/2 top-0 w-px bg-current" />
+          <span class="hero-panel__cross-horizontal absolute left-0 right-0 top-1/2 h-px bg-current" />
+          <span class="hero-panel__cross-ring absolute inset-[22%] rounded-full" />
+        </span>
         <span ref="emitter" class="hero-panel__cross-emitter" />
         <span class="hero-panel__cross-label">✝ / A</span>
       </div>
@@ -59,6 +61,7 @@
             :style="{
               '--ray-angle': `${ray.angle}deg`,
               '--ray-delay': `${ray.delay}s`,
+              '--ray-duration': `${ray.duration}s`,
               '--ray-hold': `${ray.hold}s`,
               '--ray-fade-duration': `${ray.fadeDuration}s`,
               '--ray-length': `${ray.length}px`,
@@ -257,6 +260,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 interface RayTarget {
   angle: number;
   delay: number;
+  duration: number;
   fadeDuration: number;
   hold: number;
   length: number;
@@ -281,7 +285,7 @@ let orbitIntroStart = 0;
 let orbitContext: CanvasRenderingContext2D | null = null;
 let orbitSize = 0;
 
-// 入场稍微留出时间，让环从一个安静的点开始长成完整轨道。
+// 两个大环保留自己的入场闭合动画。
 const ringEntranceDuration = 4.8;
 
 // 一个点在空间中的位置；z 值只用来判断它更靠近我们还是更远。
@@ -445,8 +449,8 @@ function createRingState(
     nextVelocityChange: randomBetween(7, 12),
     rimPhase: 0,
     rimAngularVelocity,
-    // 入场只允许一个方向扫描，固定起点不会向两侧扩张。
-    introAngle: dashed ? Math.PI * 0.5 : 0,
+    // 两个环都从 90° 起点沿顺时针方向闭合。
+    introAngle: Math.PI * 0.5,
     introDirection: 1,
     color,
     dashed,
@@ -732,14 +736,21 @@ function animateOrbits(now: number) {
   );
   const easedEntrance = 1 - Math.pow(1 - entranceProgress, 3);
   const entranceOpacity = Math.min(1, entranceProgress * 1.45);
+  const entranceRotation = easedEntrance * Math.PI * 2;
   lastOrbitTime = now;
   orbitContext.clearRect(0, 0, orbitSize, orbitSize);
 
   const segments: RingSegment[] = [];
   for (const ring of ringStates) {
     updateRingState(ring, elapsed, delta);
+    const phaseBeforeEntrance = ring.phase;
+    const rimPhaseBeforeEntrance = ring.rimPhase;
+    ring.phase += entranceRotation;
+    ring.rimPhase += entranceRotation;
     drawRingNormal(orbitContext, ring, entranceOpacity);
     segments.push(...createRingSegments(ring, easedEntrance));
+    ring.phase = phaseBeforeEntrance;
+    ring.rimPhase = rimPhaseBeforeEntrance;
   }
 
   drawRingSegments(orbitContext, segments, false, entranceOpacity);
@@ -775,17 +786,22 @@ function measureRayTargets() {
     const deltaX = target.x - origin.x;
     const deltaY = target.y - origin.y;
 
+    const rowEnd = index < 19 ? 0.72 + 3 : 1.42 + 3;
+    const rowIndex = index < 19 ? index : index - 19;
+    const delay = 0.12 + rowIndex * 0.025;
+
     return {
       angle: (Math.atan2(deltaY, deltaX) * 180) / Math.PI,
-      delay: 0.12 + index * 0.025,
-      fadeDuration: 0.18 + (index < 19 ? index : index - 19) * 0.022,
-      hold: 0.15 + (index < 19 ? index : index - 19) * 0.03,
+      delay,
+      duration: Math.max(0.45, rowEnd - delay),
+      fadeDuration: 0.18 + rowIndex * 0.022,
+      hold: 0.15 + rowIndex * 0.03,
       length: Math.hypot(deltaX, deltaY),
       x: origin.x,
       y: origin.y,
       color: index < 19
-        ? "linear-gradient(90deg, rgba(238, 241, 244, 0.16), rgba(125, 135, 148, 0.72) 36%, #252c35 100%)"
-        : "linear-gradient(90deg, #3048ff 0%, #2440e8 28%, #18208b 62%, #060914 100%)",
+        ? "linear-gradient(90deg, rgba(238, 241, 244, 0) 0%, rgba(183, 191, 202, 0.28) 24%, rgba(105, 117, 132, 0.48) 62%, rgba(37, 44, 53, 0.16) 86%, rgba(37, 44, 53, 0) 100%)"
+        : "linear-gradient(90deg, rgba(86, 111, 255, 0) 0%, rgba(78, 104, 255, 0.56) 25%, rgba(45, 69, 204, 0.42) 60%, rgba(23, 31, 92, 0.2) 82%, rgba(8, 11, 24, 0) 100%)",
     };
   });
 }
@@ -849,6 +865,15 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+/* 白色束线从中心向右出现，顺时针扫向左侧后淡出。 */
+.hero-panel__ray {
+  opacity: 0;
+  transform: rotate(0deg);
+  animation: ray-sweep 12s linear infinite both;
+  /* 24 束线均分 12 秒周期，首尾相接，不留下循环空档。 */
+  animation-delay: calc(var(--ray-index) * -0.5s);
+}
+
 
 /* Orbital geometry */
 /* 保留原来两个环的空间 TypeScript 逐段绘制。 */
@@ -897,9 +922,60 @@ onBeforeUnmount(() => {
   opacity: var(--ray-opacity, 0.9);
   transform-origin: left center;
   transform: rotate(var(--ray-angle)) scaleX(0);
-  animation: point-laser 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: point-laser var(--ray-duration, 1.8s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: var(--ray-delay);
   animation-fill-mode: both;
+}
+
+/* 定位层保持居中，运动层只负责生长和旋转。 */
+.hero-panel__cross-motion {
+  transform-origin: 50% 50%;
+  animation: cross-turn-entrance 4.8s cubic-bezier(0.16, 1, 0.3, 1) 1.6s both;
+}
+
+.hero-panel__cross-vertical,
+.hero-panel__cross-horizontal {
+  animation-duration: 1.6s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.hero-panel__cross-vertical {
+  transform-origin: 50% 50%;
+  animation-name: cross-vertical-entrance;
+}
+
+.hero-panel__cross-horizontal {
+  transform-origin: 50% 50%;
+  animation-name: cross-horizontal-entrance;
+}
+
+@property --cross-ring-progress {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* 小环从十字的 90° 位置顺时针画出，不再缩放整枚圆环。 */
+.hero-panel__cross-ring {
+  --cross-ring-progress: 0deg;
+  transform-origin: 50% 50%;
+  background: conic-gradient(
+    from 0deg,
+    currentColor 0deg var(--cross-ring-progress),
+    transparent var(--cross-ring-progress) 360deg
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 1px),
+    #000 calc(100% - 1px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 1px),
+    #000 calc(100% - 1px)
+  );
+  animation: cross-ring-draw 4.8s cubic-bezier(0.16, 1, 0.3, 1) 1.6s both;
 }
 
 /* Hero typography */
@@ -1290,6 +1366,46 @@ onBeforeUnmount(() => {
   }
 }
 
+@keyframes cross-vertical-entrance {
+  from {
+    transform: translateX(-50%) scaleY(0);
+  }
+
+  to {
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes cross-ring-draw {
+  from {
+    --cross-ring-progress: 0deg;
+  }
+
+  to {
+    --cross-ring-progress: 360deg;
+  }
+}
+
+@keyframes cross-turn-entrance {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cross-horizontal-entrance {
+  from {
+    transform: translateY(-50%) scaleX(0);
+  }
+
+  to {
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
 @keyframes line-fill {
   from {
     background-size: 0% 100%;
@@ -1347,8 +1463,40 @@ onBeforeUnmount(() => {
   }
 }
 
+@keyframes ray-sweep {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+
+  5% {
+    opacity: 0.28;
+  }
+
+  14%,
+  92% {
+    opacity: 0.62;
+  }
+
+  98% {
+    opacity: 0.32;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(188deg);
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .hero-panel__cross-motion,
+  .hero-panel__cross-vertical,
+  .hero-panel__cross-horizontal,
+  .hero-panel__cross-ring {
+    animation: none;
+  }
+
   .hero-title__line::after {
     animation: none;
     clip-path: inset(0 0 0 0);
